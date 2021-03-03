@@ -107,36 +107,34 @@ def solve_Integral_Equa(R):
             # 供选择的网络模式
             if R['model'] == str('DNN'):
                 b_NN2y = DNN_base.PDE_DNN(y_aux, W2b, B2b, hidden_layers, activate_name=act_func)
-                b_NN2Y = DNN_base.PDE_DNN(Y, W2b, B2b, hidden_layers, activate_name=act_func)
+                # b_NN2Y = DNN_base.PDE_DNN(Y, W2b, B2b, hidden_layers, activate_name=act_func)
             elif R['model'] == 'DNN_scale':
                 freq = R['freqs']
                 b_NN2y = DNN_base.PDE_DNN_scale(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-                b_NN2Y = DNN_base.PDE_DNN_scale(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+                # b_NN2Y = DNN_base.PDE_DNN_scale(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
             elif R['model'] == 'DNN_adapt_scale':
                 freq = R['freqs']
                 b_NN2y = DNN_base.PDE_DNN_adapt_scale(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-                b_NN2Y = DNN_base.PDE_DNN_adapt_scale(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+                # b_NN2Y = DNN_base.PDE_DNN_adapt_scale(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
             elif R['model'] == 'DNN_FourierBase':
                 freq = R['freqs']
                 b_NN2y = DNN_base.PDE_DNN_FourierBase(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-                b_NN2Y = DNN_base.PDE_DNN_FourierBase(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+                # b_NN2Y = DNN_base.PDE_DNN_FourierBase(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
             elif R['model'] == 'DNN_Cos_C_Sin_Base':
                 freq = R['freqs']
                 b_NN2y = DNN_base.PDE_DNN_Cos_C_Sin_Base(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-                b_NN2Y = DNN_base.PDE_DNN_Cos_C_Sin_Base(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+                # b_NN2Y = DNN_base.PDE_DNN_Cos_C_Sin_Base(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
             elif R['model'] == 'DNN_WaveletBase':
                 freq = R['freqs']
                 b_NN2y = DNN_base.PDE_DNN_WaveletBase(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-                b_NN2Y = DNN_base.PDE_DNN_WaveletBase(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-            sum2bleft = 0.0
-            sum2bright = 0.0
+                # b_NN2Y = DNN_base.PDE_DNN_WaveletBase(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+            sum2bleft = tf.zeros(shape=[1, 1], dtype=tf.float32, name='01')
+            sum2bright = tf.zeros(shape=[1, 1], dtype=tf.float32, name='02')
             for i in range(batchsize):
-                # temp = X[i]
                 Xtemp = tf.reshape(X[i], shape=[1, 1])
                 OneX = tf.concat([tfOne, Xtemp], axis=-1)   # 1 行 (1+dim) 列
                 XiTrans = tf.transpose(OneX, [1, 0])
 
-                # ttemp = y_aux-tf.matmul(beta, XiTrans)
                 fYX_y = my_normal(t=y_aux-tf.matmul(beta, XiTrans))
                 dfYX_beta = my_normal(t=y_aux-tf.matmul(beta, XiTrans))*(y_aux-tf.matmul(beta, XiTrans)) * OneX
 
@@ -144,12 +142,10 @@ def solve_Integral_Equa(R):
                 fyx_1minus_phi_integral = tf.reduce_mean(fYX_y * (1 - phi_star(t=y_aux)), axis=0)
                 dfyx_phi_integral = tf.reduce_mean(dfYX_beta * phi_star(t=y_aux), axis=0)
                 ceof_vec2left = dfyx_phi_integral/fyx_1minus_phi_integral
-                sdsk = ceof_vec2left * fYX_y
                 sum2bleft = sum2bleft + dfYX_beta + ceof_vec2left*fYX_y
 
                 b_fyx_phi_integral = tf.reduce_mean(b_NN2y*fYX_y*phi_star(t=y_aux), axis=0)
                 ceof_vec2right = b_fyx_phi_integral / fyx_1minus_phi_integral
-                tttemp = ceof_vec2right * fYX_y
                 sum2bright = sum2bright + b_NN2y * fYX_y + ceof_vec2right * fYX_y
 
             bleft = sum2bleft / batchsize
@@ -158,14 +154,14 @@ def solve_Integral_Equa(R):
             loss2b = tf.reduce_mean(tf.reduce_mean(tf.square(bleft - bright), axis=0))
 
             # 下面不应该再用循环
-            sum2Seff = 0.0
+            sum2Seff = tf.zeros(shape=[1, 1], dtype=tf.float32, name='03')
             for i in range(batchsize):
                 Xtemp = tf.reshape(X[i], shape=[1, 1])
                 OneX = tf.concat([tfOne, Xtemp], axis=-1)  # 1 行 (1+dim) 列
                 XiTrans = tf.transpose(OneX, [1, 0])
 
                 fYX2y = my_normal(t=y_aux - tf.matmul(beta, XiTrans))
-                Yi = tf.reshape(Y[i], shape=[1,1])
+                Yi = tf.reshape(Y[i], shape=[1, 1])
                 fYX2Y = my_normal(t=Yi-tf.matmul(beta, XiTrans))
 
                 dfYX_beta2Y = my_normal(t=Yi-tf.matmul(beta, XiTrans))*(Yi-tf.matmul(beta, XiTrans)) * OneX
@@ -177,7 +173,11 @@ def solve_Integral_Equa(R):
 
                 R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])
                 Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral
-                Seff2 = R2XY_i * tf.reshape(b_NN2Y[i], shape=[1, -1])
+                if R['model'] == str('DNN'):
+                    b_NN2yi = DNN_base.PDE_DNN(Yi, W2b, B2b, hidden_layers, activate_name=act_func)
+                else:
+                    assert(R['model'] == str('DNN'))
+                Seff2 = R2XY_i * tf.reshape(b_NN2yi, shape=[1, -1])
                 Seff3 = (1-R2XY_i) * (fyx_b_phi_integral/fyx_1minus_phi_integral)
                 Seff = Seff1 - Seff2 + Seff3
                 sum2Seff = sum2Seff + Seff
@@ -213,16 +213,21 @@ def solve_Integral_Equa(R):
     config.allow_soft_placement = True                  # 当指定的设备不存在时，允许选择一个存在的设备运行。比如gpu不存在，自动降到cpu上运行
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
+
         tmp_lr = learning_rate
+        x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
+        y_batch = 0.25 - 0.5 * x_batch + np.random.randn(batchsize, 1)
+        y_aux_batch = np.reshape(np.random.uniform(0, 1, batchsize2aux), (-1, 1))
+        relate2XY = np.reshape(np.random.randint(0, 1, batchsize), (-1, 1))
+        one2train = np.ones((1, 1))
 
         for i_epoch in range(R['max_epoch'] + 1):
-            x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
-            y_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5) + np.random.randn(batchsize, 1)
-            y_aux_batch = np.reshape(np.random.uniform(0, 1, batchsize2aux), (-1, 1))
-            relate2XY = np.reshape(np.random.randint(0, 1, batchsize), (-1, 1))
-            one2train = np.ones((1, 1))
+            # x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
+            # y_batch = 0.25 - 0.5*x_batch + np.random.randn(batchsize, 1)
+            # y_aux_batch = np.reshape(np.random.uniform(0, 1, batchsize2aux), (-1, 1))
+            # relate2XY = np.reshape(np.random.randint(0, 1, batchsize), (-1, 1))
+            # one2train = np.ones((1, 1))
             tmp_lr = tmp_lr * (1 - lr_decay)
-
             _, loss2b_tmp, loss2seff_tmp, loss_tmp, p_WB, beta_temp = sess.run(
                 [train_my_loss, loss2b, loss2Seff, loss, penalty_WB, beta],
                 feed_dict={X: x_batch, Y: y_batch, R2XY: relate2XY, y_aux: y_aux_batch, tfOne: one2train,
@@ -231,6 +236,17 @@ def solve_Integral_Equa(R):
             loss_b_all.append(loss2b_tmp)
             loss_seff_all.append(loss2seff_tmp)
             loss_all.append(loss_tmp)
+
+            DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
+            print(beta_temp)
+
+        saveData.save_trainLoss2mat_1actFunc(loss_b_all, loss_seff_all, loss_all, actName=act_func, outPath=R['FolderName'])
+        plotData.plotTrain_loss_1act_func(loss_b_all, lossType='loss_b', seedNo=R['seed'], outPath=R['FolderName'],
+                                          yaxis_scale=True)
+        plotData.plotTrain_loss_1act_func(loss_seff_all, lossType='loss_seff', seedNo=R['seed'], outPath=R['FolderName'],
+                                          yaxis_scale=True)
+        plotData.plotTrain_loss_1act_func(loss_all, lossType='loss_all', seedNo=R['seed'], outPath=R['FolderName'],
+                                          yaxis_scale=True)
 
 
 if __name__ == "__main__":
@@ -286,7 +302,7 @@ if __name__ == "__main__":
         epoch_stop = input('please input a stop epoch:')
         R['max_epoch'] = int(epoch_stop)
 
-    R['PDE_type'] = 'integral_eq'
+    R['PDE_type'] = 'Integral_Eq'
     R['eqs_name'] = 'missdata'
 
     R['input_dim'] = 1                                    # 输入维数，即问题的维数(几元问题)
@@ -295,17 +311,13 @@ if __name__ == "__main__":
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup of DNN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # 训练集的设置
-    # R['batch_size2integral'] = 3000                       # 内部训练数据的批大小
-    R['batch_size2integral'] = 5  # 内部训练数据的批大小
-    R['batch_size2auxiliary'] = 200
-
-    # 装载测试数据模式和画图
-    R['plot_ongoing'] = 0
-    R['subfig_type'] = 1
+    R['batch_size2integral'] = 100                       # 内部训练数据的批大小
+    # R['batch_size2integral'] = 5  # 内部训练数据的批大小
+    R['batch_size2auxiliary'] = 100
 
     R['optimizer_name'] = 'Adam'                          # 优化器
-    R['learning_rate'] = 2e-4                             # 学习率
-    R['learning_rate_decay'] = 5e-5                       # 学习率 decay
+    R['learning_rate'] = 1e-3                             # 学习率
+    R['learning_rate_decay'] = 1e-4                       # 学习率 decay
     # R['train_group'] = 1
     R['train_group'] = 0
 
@@ -331,7 +343,8 @@ if __name__ == "__main__":
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
     if R['model'] == 'DNN_Cos_C_Sin_Base':
-        R['hidden_layers'] = (30, 20, 10, 10, 5)
+        # R['hidden_layers'] = (30, 20, 10, 10, 5)
+        R['hidden_layers'] = (100, 50, 30, 30, 20)
         # R['hidden_layers'] = (100, 100, 80, 80, 60)  # 1*200+200*100+100*80+80*80+80*60+60*1= 39460 个参数
         # R['hidden_layers'] = (125, 100, 80, 80, 60)  # 1*250+250*100+100*80+80*80+80*60+60*1= 44510 个参数
         # R['hidden_layers'] = (100, 120, 80, 80, 80)  # 1*200+200*120+120*80+80*80+80*80+80*1= 46680 个参数
@@ -339,8 +352,8 @@ if __name__ == "__main__":
         # R['hidden_layers'] = (100, 150, 100, 100, 80)  # 1*200+200*150+150*100+100*100+100*80+80*1= 63280 个参数
         # R['hidden_layers'] = (125, 150, 100, 100, 80)  # 1*250+250*150+150*100+100*100+100*80+80*1= 70830 个参数
     else:
-        R['hidden_layers'] = (30, 20, 10, 10, 5)
-        # R['hidden_layers'] = (300, 200, 150, 150, 100, 50, 50)
+        # R['hidden_layers'] = (30, 20, 10, 10, 5)
+        R['hidden_layers'] = (100, 50, 30, 30, 20)
         # R['hidden_layers'] = (400, 300, 300, 200, 100, 100, 50)
         # R['hidden_layers'] = (500, 400, 300, 300, 200, 100)
         # R['hidden_layers'] = (500, 400, 300, 200, 200, 100)
