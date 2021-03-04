@@ -67,8 +67,10 @@ def solve_Integral_Equa(R):
     log_out_path = R['FolderName']        # 将路径从字典 R 中提取出来
     if not os.path.exists(log_out_path):  # 判断路径是否已经存在
         os.mkdir(log_out_path)            # 无 log_out_path 路径，创建一个 log_out_path 路径
-    logfile_name = '%s_%s.txt' % ('log2', R['activate_func'])
+    outFile2para_name = '%s_%s.txt' % ('para2', 'beta')
+    logfile_name = '%s%s.txt' % ('log2', R['activate_func'])
     log_fileout = open(os.path.join(log_out_path, logfile_name), 'w')  # 在这个路径下创建并打开一个可写的 log_train.txt文件
+    para_outFile = open(os.path.join(log_out_path, outFile2para_name), 'w')  # 在这个路径下创建并打开一个可写的 log_train.txt文件
     dictionary_out2file(R, log_fileout)
 
     # 积分方程问题需要的设置
@@ -100,8 +102,8 @@ def solve_Integral_Equa(R):
             Y = tf.placeholder(tf.float32, name='Y_recv', shape=[batchsize, data_indim])
             R2XY = tf.placeholder(tf.float32, name='R2XY_recv', shape=[batchsize, data_indim])
             y_aux = tf.placeholder(tf.float32, name='y_auxiliary', shape=[batchsize2aux, 1])
-            # beta = tf.Variable(tf.random.uniform([1, para_dim]), dtype='float32', name='beta')
-            beta = tf.Variable([[0.25, -0.5]], dtype='float32', name='beta')
+            beta = tf.Variable(tf.random.uniform([1, para_dim]), dtype='float32', name='beta')
+            # beta = tf.Variable([[0.25, -0.5]], dtype='float32', name='beta')
             # beta = tf.constant([[0.25, -0.5]], dtype=tf.float32, name='beta')
             tfOne = tf.placeholder(tf.float32, shape=[1, 1], name='tfOne')
             inline_lr = tf.placeholder_with_default(input=1e-5, shape=[], name='inline_learning_rate')
@@ -252,8 +254,13 @@ def solve_Integral_Equa(R):
                 DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
             if (i_epoch % 100) == 0:
                 print('****************** %d **********************'% int(i_epoch/100))
-                print(beta_temp)
+                print('beta:', beta_temp)
+                # print('beta:', beta_temp[0, 0])
+                # print('beta:', beta_temp[0, 1])
                 print('\n')
+                DNN_tools.log_string('*************** %d*100 *******************' % int(i_epoch/100), para_outFile)
+                DNN_tools.log_string('beta:[%f, %f]' % (beta_temp[0, 0], beta_temp[0, 1]), para_outFile)
+                DNN_tools.log_string('\n', para_outFile)
 
         saveData.save_trainLoss2mat_1actFunc(loss_b_all, loss_seff_all, loss_all, actName=act_func, outPath=R['FolderName'])
         plotData.plotTrain_loss_1act_func(loss_b_all, lossType='loss_b', seedNo=R['seed'], outPath=R['FolderName'],
