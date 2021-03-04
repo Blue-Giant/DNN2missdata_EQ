@@ -128,6 +128,8 @@ def solve_Integral_Equa(R):
                 freq = R['freqs']
                 b_NN2y = DNN_base.PDE_DNN_WaveletBase(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
                 # b_NN2Y = DNN_base.PDE_DNN_WaveletBase(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+
+            # 下面怎么把循环改为向量操作呢？
             sum2bleft = tf.zeros(shape=[1, 1], dtype=tf.float32, name='01')
             sum2bright = tf.zeros(shape=[1, 1], dtype=tf.float32, name='02')
             for i in range(batchsize):
@@ -153,7 +155,6 @@ def solve_Integral_Equa(R):
 
             loss2b = tf.reduce_mean(tf.reduce_mean(tf.square(bleft - bright), axis=0))
 
-            # 下面不应该再用循环
             sum2Seff = tf.zeros(shape=[1, 1], dtype=tf.float32, name='03')
             for i in range(batchsize):
                 Xtemp = tf.reshape(X[i], shape=[1, 1])
@@ -211,16 +212,20 @@ def solve_Integral_Equa(R):
     config = tf.ConfigProto(allow_soft_placement=True)  # 创建sess的时候对sess进行参数配置
     config.gpu_options.allow_growth = True              # True是让TensorFlow在运行过程中动态申请显存，避免过多的显存占用。
     config.allow_soft_placement = True                  # 当指定的设备不存在时，允许选择一个存在的设备运行。比如gpu不存在，自动降到cpu上运行
+
+    x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
+    y_init = 0.25 - 0.5 * x_batch + np.reshape(np.random.randn(batchsize, 1), (-1, 1))
+    y_aux_batch = np.reshape(np.random.uniform(0, 1, batchsize2aux), (-1, 1))
+    # y_aux_batch = np.reshape(np.random.randn(batchsize2aux, 1), (-1, 1))
+    # x_aux_batch = DNN_data.randnormal_mu_sigma(size=batchsize2aux, mu=0.5, sigma=0.5)
+    # y_aux_batch = 0.25 - 0.5 * x_aux_batch + np.reshape(np.random.randn(batchsize2aux, 1), (-1, 1))
+    relate2XY = np.reshape(np.random.randint(0, 2, batchsize), (-1, 1))
+    y_batch = np.multiply(y_init, relate2XY)
+    one2train = np.ones((1, 1))
+
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
-
         tmp_lr = learning_rate
-        x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
-        y_batch = 0.25 - 0.5 * x_batch + np.random.randn(batchsize, 1)
-        y_aux_batch = np.reshape(np.random.uniform(0, 1, batchsize2aux), (-1, 1))
-        relate2XY = np.reshape(np.random.randint(0, 1, batchsize), (-1, 1))
-        one2train = np.ones((1, 1))
-
         for i_epoch in range(R['max_epoch'] + 1):
             # x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
             # y_batch = 0.25 - 0.5*x_batch + np.random.randn(batchsize, 1)
@@ -238,12 +243,15 @@ def solve_Integral_Equa(R):
             loss_all.append(loss_tmp)
 
             DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
-            print(beta_temp)
+            if (i_epoch % 100) == 0:
+                print('****************** %d **********************'% int(i_epoch/100))
+                print(beta_temp)
+                print('\n')
 
         saveData.save_trainLoss2mat_1actFunc(loss_b_all, loss_seff_all, loss_all, actName=act_func, outPath=R['FolderName'])
         plotData.plotTrain_loss_1act_func(loss_b_all, lossType='loss_b', seedNo=R['seed'], outPath=R['FolderName'],
                                           yaxis_scale=True)
-        plotData.plotTrain_loss_1act_func(loss_seff_all, lossType='loss_seff', seedNo=R['seed'], outPath=R['FolderName'],
+        plotData.plotTrain_loss_1act_func(loss_seff_all, lossType='loss_s', seedNo=R['seed'], outPath=R['FolderName'],
                                           yaxis_scale=True)
         plotData.plotTrain_loss_1act_func(loss_all, lossType='loss_all', seedNo=R['seed'], outPath=R['FolderName'],
                                           yaxis_scale=True)
@@ -311,13 +319,15 @@ if __name__ == "__main__":
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup of DNN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # 训练集的设置
-    R['batch_size2integral'] = 100                       # 内部训练数据的批大小
-    # R['batch_size2integral'] = 5  # 内部训练数据的批大小
-    R['batch_size2auxiliary'] = 100
+    R['batch_size2integral'] = 200              # 内部训练数据的批大小
+    # R['batch_size2integral'] = 100            # 内部训练数据的批大小
+    # R['batch_size2integral'] = 5              # 内部训练数据的批大小
+    # R['batch_size2auxiliary'] = 100
+    R['batch_size2auxiliary'] = 50
 
-    R['optimizer_name'] = 'Adam'                          # 优化器
-    R['learning_rate'] = 1e-3                             # 学习率
-    R['learning_rate_decay'] = 1e-4                       # 学习率 decay
+    R['optimizer_name'] = 'Adam'                # 优化器
+    R['learning_rate'] = 1e-3                   # 学习率
+    R['learning_rate_decay'] = 1e-4             # 学习率 decay
     # R['train_group'] = 1
     R['train_group'] = 0
 
