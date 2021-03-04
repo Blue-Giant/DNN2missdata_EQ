@@ -132,25 +132,26 @@ def solve_Integral_Equa(R):
             # 下面怎么把循环改为向量操作呢？
             sum2bleft = tf.zeros(shape=[1, 1], dtype=tf.float32, name='01')
             sum2bright = tf.zeros(shape=[1, 1], dtype=tf.float32, name='02')
+            # 使用循环将Xi取出来,然后带入方程计算b(·:beta),需要对i累加，最后取均值
             for i in range(batchsize):
-                Xtemp = tf.reshape(X[i], shape=[1, 1])
+                Xtemp = tf.reshape(X[i], shape=[1, 1])      # Xi取出
                 OneX = tf.concat([tfOne, Xtemp], axis=-1)   # 1 行 (1+dim) 列
-                XiTrans = tf.transpose(OneX, [1, 0])
+                XiTrans = tf.transpose(OneX, [1, 0])        # (1,Xi)
 
-                fYX_y = my_normal(t=y_aux-tf.matmul(beta, XiTrans))
-                dfYX_beta = my_normal(t=y_aux-tf.matmul(beta, XiTrans))*(y_aux-tf.matmul(beta, XiTrans)) * OneX
+                fYX_y = my_normal(t=y_aux-tf.matmul(beta, XiTrans))      # fY|X在y处的取值，fY|X(y)
+                dfYX_beta = tf.matmul(my_normal(t=y_aux-tf.matmul(beta, XiTrans))*(y_aux-tf.matmul(beta, XiTrans)), OneX)  # fY|X(y)对beta的导数
 
                 # beta 是 1 行 para_dim 列
-                fyx_1minus_phi_integral = tf.reduce_mean(fYX_y * (1 - phi_star(t=y_aux)), axis=0)
-                dfyx_phi_integral = tf.reduce_mean(dfYX_beta * phi_star(t=y_aux), axis=0)
+                fyx_1minus_phi_integral = tf.reduce_mean(fYX_y * (1 - phi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
+                dfyx_phi_integral = tf.reduce_mean(dfYX_beta * phi_star(t=y_aux), axis=0)          # diff_fY|X(y)*phi(t)的积分
                 ceof_vec2left = dfyx_phi_integral/fyx_1minus_phi_integral
                 sum2bleft = sum2bleft + dfYX_beta + ceof_vec2left*fYX_y
 
-                b_fyx_phi_integral = tf.reduce_mean(b_NN2y*fYX_y*phi_star(t=y_aux), axis=0)
+                b_fyx_phi_integral = tf.reduce_mean(b_NN2y*fYX_y*phi_star(t=y_aux), axis=0)        # b(t, beta)*fY|X(t)*phi(t)的积分
                 ceof_vec2right = b_fyx_phi_integral / fyx_1minus_phi_integral
                 sum2bright = sum2bright + b_NN2y * fYX_y + ceof_vec2right * fYX_y
 
-            bleft = sum2bleft / batchsize
+            bleft = sum2bleft / batchsize    # 1、N
             bright = sum2bright / batchsize
 
             loss2b = tf.reduce_mean(tf.reduce_mean(tf.square(bleft - bright), axis=0))
@@ -165,15 +166,16 @@ def solve_Integral_Equa(R):
                 Yi = tf.reshape(Y[i], shape=[1, 1])
                 fYX2Y = my_normal(t=Yi-tf.matmul(beta, XiTrans))
 
-                dfYX_beta2Y = my_normal(t=Yi-tf.matmul(beta, XiTrans))*(Yi-tf.matmul(beta, XiTrans)) * OneX
-                dfYX_beta2y = my_normal(t=y_aux - tf.matmul(beta, XiTrans)) * (y_aux - tf.matmul(beta, XiTrans)) * OneX
+                dfYX_beta2Y = tf.matmul(my_normal(t=Yi-tf.matmul(beta, XiTrans))*(Yi-tf.matmul(beta, XiTrans)), OneX)   # diff_fY|X(Yi)
+                dfYX_beta2y = tf.matmul(my_normal(t=y_aux - tf.matmul(beta, XiTrans)) * (y_aux - tf.matmul(beta, XiTrans)), OneX)  # diff_fY|X(t)
 
-                fyx_1minus_phi_integral = tf.reduce_mean(fYX2y * (1 - phi_star(t=y_aux)), axis=0)
-                dfyx_phi_integral = tf.reduce_mean(dfYX_beta2y * phi_star(t=y_aux), axis=0)
-                fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * phi_star(t=y_aux), axis=0)
+                fyx_1minus_phi_integral = tf.reduce_mean(fYX2y * (1 - phi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
+                dfyx_phi_integral = tf.reduce_mean(dfYX_beta2y * phi_star(t=y_aux), axis=0)        # diff_fY|X(y)*phi(t)的积分
+                fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * phi_star(t=y_aux), axis=0)    # fY|X(t)*b(t, beta)*phi(t)的积分
 
                 R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])
                 Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral
+
                 if R['model'] == 'DNN':
                     b_NN2Yi = DNN_base.PDE_DNN(Yi, W2b, B2b, hidden_layers, activate_name=act_func)
                 elif R['model'] == 'DNN_scale':
@@ -254,9 +256,7 @@ def solve_Integral_Equa(R):
                 DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
             if (i_epoch % 100) == 0:
                 print('****************** %d **********************'% int(i_epoch/100))
-                print('beta:', beta_temp)
-                # print('beta:', beta_temp[0, 0])
-                # print('beta:', beta_temp[0, 1])
+                print('beta:[%f %f]' % (beta_temp[0, 0], beta_temp[0, 1]))
                 print('\n')
                 DNN_tools.log_string('*************** %d*100 *******************' % int(i_epoch/100), para_outFile)
                 DNN_tools.log_string('beta:[%f, %f]' % (beta_temp[0, 0], beta_temp[0, 1]), para_outFile)
