@@ -100,7 +100,9 @@ def solve_Integral_Equa(R):
             Y = tf.placeholder(tf.float32, name='Y_recv', shape=[batchsize, data_indim])
             R2XY = tf.placeholder(tf.float32, name='R2XY_recv', shape=[batchsize, data_indim])
             y_aux = tf.placeholder(tf.float32, name='y_auxiliary', shape=[batchsize2aux, 1])
-            beta = tf.Variable(0.1 * tf.random.uniform([1, para_dim]), dtype='float32', name='beta')
+            # beta = tf.Variable(tf.random.uniform([1, para_dim]), dtype='float32', name='beta')
+            beta = tf.Variable([[0.25, -0.5]], dtype='float32', name='beta')
+            # beta = tf.constant([[0.25, -0.5]], dtype=tf.float32, name='beta')
             tfOne = tf.placeholder(tf.float32, shape=[1, 1], name='tfOne')
             inline_lr = tf.placeholder_with_default(input=1e-5, shape=[], name='inline_learning_rate')
 
@@ -124,10 +126,6 @@ def solve_Integral_Equa(R):
                 freq = R['freqs']
                 b_NN2y = DNN_base.PDE_DNN_Cos_C_Sin_Base(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
                 # b_NN2Y = DNN_base.PDE_DNN_Cos_C_Sin_Base(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-            elif R['model'] == 'DNN_WaveletBase':
-                freq = R['freqs']
-                b_NN2y = DNN_base.PDE_DNN_WaveletBase(y_aux, W2b, B2b, hidden_layers, freq, activate_name=act_func)
-                # b_NN2Y = DNN_base.PDE_DNN_WaveletBase(Y, W2b, B2b, hidden_layers, freq, activate_name=act_func)
 
             # 下面怎么把循环改为向量操作呢？
             sum2bleft = tf.zeros(shape=[1, 1], dtype=tf.float32, name='01')
@@ -174,11 +172,22 @@ def solve_Integral_Equa(R):
 
                 R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])
                 Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral
-                if R['model'] == str('DNN'):
-                    b_NN2yi = DNN_base.PDE_DNN(Yi, W2b, B2b, hidden_layers, activate_name=act_func)
-                else:
-                    assert(R['model'] == str('DNN'))
-                Seff2 = R2XY_i * tf.reshape(b_NN2yi, shape=[1, -1])
+                if R['model'] == 'DNN':
+                    b_NN2Yi = DNN_base.PDE_DNN(Yi, W2b, B2b, hidden_layers, activate_name=act_func)
+                elif R['model'] == 'DNN_scale':
+                    freq = R['freqs']
+                    b_NN2Yi = DNN_base.PDE_DNN_scale(Yi, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+                elif R['model'] == 'DNN_adapt_scale':
+                    freq = R['freqs']
+                    b_NN2Yi = DNN_base.PDE_DNN_adapt_scale(Yi, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+                elif R['model'] == 'DNN_FourierBase':
+                    freq = R['freqs']
+                    b_NN2Yi = DNN_base.PDE_DNN_FourierBase(Yi, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+                elif R['model'] == 'DNN_Cos_C_Sin_Base':
+                    freq = R['freqs']
+                    b_NN2Yi = DNN_base.PDE_DNN_Cos_C_Sin_Base(Yi, W2b, B2b, hidden_layers, freq, activate_name=act_func)
+
+                Seff2 = R2XY_i * tf.reshape(b_NN2Yi, shape=[1, -1])
                 Seff3 = (1-R2XY_i) * (fyx_b_phi_integral/fyx_1minus_phi_integral)
                 Seff = Seff1 - Seff2 + Seff3
                 sum2Seff = sum2Seff + Seff
@@ -215,8 +224,8 @@ def solve_Integral_Equa(R):
 
     x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
     y_init = 0.25 - 0.5 * x_batch + np.reshape(np.random.randn(batchsize, 1), (-1, 1))
-    y_aux_batch = np.reshape(np.random.uniform(0, 1, batchsize2aux), (-1, 1))
-    # y_aux_batch = np.reshape(np.random.randn(batchsize2aux, 1), (-1, 1))
+    y_aux_batch = DNN_data.rand_it(batch_size=batchsize2aux, variable_dim=data_indim, region_a=-2, region_b=2)
+    # y_aux_batch = DNN_data.randnormal_mu_sigma(size=batchsize2aux, mu=0.0, sigma=1.5)
     # x_aux_batch = DNN_data.randnormal_mu_sigma(size=batchsize2aux, mu=0.5, sigma=0.5)
     # y_aux_batch = 0.25 - 0.5 * x_aux_batch + np.reshape(np.random.randn(batchsize2aux, 1), (-1, 1))
     relate2XY = np.reshape(np.random.randint(0, 2, batchsize), (-1, 1))
@@ -227,11 +236,6 @@ def solve_Integral_Equa(R):
         sess.run(tf.global_variables_initializer())
         tmp_lr = learning_rate
         for i_epoch in range(R['max_epoch'] + 1):
-            # x_batch = DNN_data.randnormal_mu_sigma(size=batchsize, mu=0.5, sigma=0.5)
-            # y_batch = 0.25 - 0.5*x_batch + np.random.randn(batchsize, 1)
-            # y_aux_batch = np.reshape(np.random.uniform(0, 1, batchsize2aux), (-1, 1))
-            # relate2XY = np.reshape(np.random.randint(0, 1, batchsize), (-1, 1))
-            # one2train = np.ones((1, 1))
             tmp_lr = tmp_lr * (1 - lr_decay)
             _, loss2b_tmp, loss2seff_tmp, loss_tmp, p_WB, beta_temp = sess.run(
                 [train_my_loss, loss2b, loss2Seff, loss, penalty_WB, beta],
@@ -241,8 +245,11 @@ def solve_Integral_Equa(R):
             loss_b_all.append(loss2b_tmp)
             loss_seff_all.append(loss2seff_tmp)
             loss_all.append(loss_tmp)
-
-            DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
+            if (i_epoch % 10) == 0:
+                DNN_tools.log_string('****************** %d*10 **********************' % int(i_epoch / 10), log_fileout)
+                DNN_tools.log_string('lossb for training: %.10f\n' % loss2b_tmp, log_fileout)
+                DNN_tools.log_string('lossS for training: %.10f\n' % loss2seff_tmp, log_fileout)
+                DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
             if (i_epoch % 100) == 0:
                 print('****************** %d **********************'% int(i_epoch/100))
                 print(beta_temp)
@@ -326,8 +333,8 @@ if __name__ == "__main__":
     R['batch_size2auxiliary'] = 50
 
     R['optimizer_name'] = 'Adam'                # 优化器
-    R['learning_rate'] = 1e-3                   # 学习率
-    R['learning_rate_decay'] = 1e-4             # 学习率 decay
+    R['learning_rate'] = 1e-2                   # 学习率
+    R['learning_rate_decay'] = 5e-3             # 学习率 decay
     # R['train_group'] = 1
     R['train_group'] = 0
 
@@ -339,11 +346,11 @@ if __name__ == "__main__":
     # R['regular_weight_biases'] = 0.0025                 # Regularization parameter for weights
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
-    R['model'] = 'DNN'
+    # R['model'] = 'DNN'
     # R['model'] = 'DNN_BN'
     # R['model'] = 'DNN_scale'
     # R['model'] = 'DNN_adapt_scale'
-    # R['model'] = 'DNN_FourierBase'
+    R['model'] = 'DNN_FourierBase'
     # R['model'] = 'DNN_Cos_C_Sin_Base'
     # R['model'] = 'DNN_WaveletBase'
 
