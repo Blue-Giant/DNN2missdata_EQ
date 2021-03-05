@@ -151,8 +151,8 @@ def solve_Integral_Equa(R):
                 ceof_vec2right = b_fyx_phi_integral / fyx_1minus_phi_integral
                 sum2bright = sum2bright + b_NN2y * fYX_y + ceof_vec2right * fYX_y
 
-            bleft = sum2bleft / batchsize    # 1、N
-            bright = sum2bright / batchsize
+            bleft = sum2bleft / batchsize    # (1/N)sum{i=1:i=N(·)}
+            bright = sum2bright / batchsize  # (1/N)sum{i=1:i=N(·)}
 
             loss2b = tf.reduce_mean(tf.reduce_mean(tf.square(bleft - bright), axis=0))
 
@@ -162,9 +162,9 @@ def solve_Integral_Equa(R):
                 OneX = tf.concat([tfOne, Xtemp], axis=-1)  # 1 行 (1+dim) 列
                 XiTrans = tf.transpose(OneX, [1, 0])
 
-                fYX2y = my_normal(t=y_aux - tf.matmul(beta, XiTrans))
-                Yi = tf.reshape(Y[i], shape=[1, 1])
-                fYX2Y = my_normal(t=Yi-tf.matmul(beta, XiTrans))
+                fYX2y = my_normal(t=y_aux - tf.matmul(beta, XiTrans))   # fY|X在y处的取值，fY|X(y)
+                Yi = tf.reshape(Y[i], shape=[1, 1])                     # Yi
+                fYX2Y = my_normal(t=Yi-tf.matmul(beta, XiTrans))        # fY|X在Yi处的取值，fY|X(Yi)
 
                 dfYX_beta2Y = tf.matmul(my_normal(t=Yi-tf.matmul(beta, XiTrans))*(Yi-tf.matmul(beta, XiTrans)), OneX)   # diff_fY|X(Yi)
                 dfYX_beta2y = tf.matmul(my_normal(t=y_aux - tf.matmul(beta, XiTrans)) * (y_aux - tf.matmul(beta, XiTrans)), OneX)  # diff_fY|X(t)
@@ -173,8 +173,8 @@ def solve_Integral_Equa(R):
                 dfyx_phi_integral = tf.reduce_mean(dfYX_beta2y * phi_star(t=y_aux), axis=0)        # diff_fY|X(y)*phi(t)的积分
                 fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * phi_star(t=y_aux), axis=0)    # fY|X(t)*b(t, beta)*phi(t)的积分
 
-                R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])
-                Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral
+                R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])               # Ri
+                Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral          # S^*_beta
 
                 if R['model'] == 'DNN':
                     b_NN2Yi = DNN_base.PDE_DNN(Yi, W2b, B2b, hidden_layers, activate_name=act_func)
@@ -250,19 +250,20 @@ def solve_Integral_Equa(R):
             loss_seff_all.append(loss2seff_tmp)
             loss_all.append(loss_tmp)
             if (i_epoch % 10) == 0:
-                DNN_tools.log_string('****************** %d*10 **********************' % int(i_epoch / 10), log_fileout)
+                DNN_tools.log_string('*************** epoch: %d*10 ****************' % int(i_epoch / 10), log_fileout)
                 DNN_tools.log_string('lossb for training: %.10f\n' % loss2b_tmp, log_fileout)
                 DNN_tools.log_string('lossS for training: %.10f\n' % loss2seff_tmp, log_fileout)
                 DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
             if (i_epoch % 100) == 0:
-                print('****************** %d **********************'% int(i_epoch/100))
+                print('**************** epoch: %d*100 *******************'% int(i_epoch/100))
                 print('beta:[%f %f]' % (beta_temp[0, 0], beta_temp[0, 1]))
                 print('\n')
-                DNN_tools.log_string('*************** %d*100 *******************' % int(i_epoch/100), para_outFile)
+                DNN_tools.log_string('*************** epoch: %d*100 *****************' % int(i_epoch/100), para_outFile)
                 DNN_tools.log_string('beta:[%f, %f]' % (beta_temp[0, 0], beta_temp[0, 1]), para_outFile)
                 DNN_tools.log_string('\n', para_outFile)
 
-        saveData.save_trainLoss2mat_1actFunc(loss_b_all, loss_seff_all, loss_all, actName=act_func, outPath=R['FolderName'])
+        saveData.save_trainLoss2mat_1actFunc(loss_b_all, loss_seff_all, loss_all, actName=act_func,
+                                             outPath=R['FolderName'])
         plotData.plotTrain_loss_1act_func(loss_b_all, lossType='loss_b', seedNo=R['seed'], outPath=R['FolderName'],
                                           yaxis_scale=True)
         plotData.plotTrain_loss_1act_func(loss_seff_all, lossType='loss_s', seedNo=R['seed'], outPath=R['FolderName'],
