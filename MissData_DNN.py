@@ -37,6 +37,13 @@ def dictionary_out2file(R_dic, log_fileout):
     else:
         DNN_tools.log_string('optimizer:%s  with momentum=%f\n' % (R_dic['optimizer_name'], R_dic['momentum']), log_fileout)
 
+    if R_dic['train_group'] == 0:
+        DNN_tools.log_string('Training total loss \n', log_fileout)
+    elif R_dic['train_group'] == 1:
+        DNN_tools.log_string('Training total loss + parts loss \n', log_fileout)
+    elif R_dic['train_group'] == 2:
+        DNN_tools.log_string('Training parts loss \n', log_fileout)
+
     DNN_tools.log_string('Init learning rate: %s\n' % str(R_dic['learning_rate']), log_fileout)
 
     DNN_tools.log_string('Decay to learning rate: %s\n' % str(R_dic['learning_rate_decay']), log_fileout)
@@ -210,6 +217,8 @@ def solve_Integral_Equa(R):
             loss = loss2b + loss2Seff + penalty_WB       # 要优化的loss function
 
             my_optimizer = tf.train.AdamOptimizer(inline_lr)
+            if R['train_group'] == 0:
+                train_my_loss = my_optimizer.minimize(loss, global_step=global_steps)
             if R['train_group'] == 1:
                 train_op1 = my_optimizer.minimize(loss2b, global_step=global_steps)
                 train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps)
@@ -219,8 +228,6 @@ def solve_Integral_Equa(R):
                 train_op1 = my_optimizer.minimize(loss2b, global_step=global_steps)
                 train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps)
                 train_my_loss = tf.group(train_op1, train_op2)
-            else:
-                train_my_loss = my_optimizer.minimize(loss, global_step=global_steps)
 
     t0 = time.time()
     loss_b_all, loss_seff_all, loss_all = [], [], []  # 空列表, 使用 append() 添加元素
@@ -370,7 +377,8 @@ if __name__ == "__main__":
 
     if R['model'] != 'DNN':
         # 网络的频率范围设置
-        R['freqs'] = np.concatenate(([1], np.arange(1, 100 - 1)), axis=0)
+        R['freqs'] = np.arange(1, 101)
+        # R['freqs'] = np.concatenate(([1], np.arange(1, 100 - 1)), axis=0)
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
     if R['model'] == 'DNN_Cos_C_Sin_Base':
