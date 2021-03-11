@@ -53,7 +53,7 @@ def Bernoulli(Z=None):
     return BR
 
 
-def phi_star(t=None):
+def pi_star(t=None):
     phi = tf.exp(1 - t) / (1 + tf.exp(1 - t))
     return phi
 
@@ -142,12 +142,12 @@ def solve_Integral_Equa(R):
                 dfYX_beta = tf.matmul(my_normal(t=y_aux-tf.matmul(beta, XiTrans))*(y_aux-tf.matmul(beta, XiTrans)), OneX)  # fY|X(y)对beta的导数
 
                 # beta 是 1 行 para_dim 列
-                fyx_1minus_phi_integral = tf.reduce_mean(fYX_y * (1 - phi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
-                dfyx_phi_integral = tf.reduce_mean(dfYX_beta * phi_star(t=y_aux), axis=0)          # diff_fY|X(y)*phi(t)的积分
+                fyx_1minus_phi_integral = tf.reduce_mean(fYX_y * (1 - pi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
+                dfyx_phi_integral = tf.reduce_mean(dfYX_beta * pi_star(t=y_aux), axis=0)          # diff_fY|X(y)*phi(t)的积分
                 ceof_vec2left = dfyx_phi_integral/fyx_1minus_phi_integral
                 sum2bleft = sum2bleft + dfYX_beta + ceof_vec2left*fYX_y
 
-                b_fyx_phi_integral = tf.reduce_mean(b_NN2y*fYX_y*phi_star(t=y_aux), axis=0)        # b(t, beta)*fY|X(t)*phi(t)的积分
+                b_fyx_phi_integral = tf.reduce_mean(b_NN2y*fYX_y*pi_star(t=y_aux), axis=0)        # b(t, beta)*fY|X(t)*phi(t)的积分
                 ceof_vec2right = b_fyx_phi_integral / fyx_1minus_phi_integral
                 sum2bright = sum2bright + b_NN2y * fYX_y + ceof_vec2right * fYX_y
 
@@ -169,9 +169,9 @@ def solve_Integral_Equa(R):
                 dfYX_beta2Y = tf.matmul(my_normal(t=Yi-tf.matmul(beta, XiTrans))*(Yi-tf.matmul(beta, XiTrans)), OneX)   # diff_fY|X(Yi)
                 dfYX_beta2y = tf.matmul(my_normal(t=y_aux - tf.matmul(beta, XiTrans)) * (y_aux - tf.matmul(beta, XiTrans)), OneX)  # diff_fY|X(t)
 
-                fyx_1minus_phi_integral = tf.reduce_mean(fYX2y * (1 - phi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
-                dfyx_phi_integral = tf.reduce_mean(dfYX_beta2y * phi_star(t=y_aux), axis=0)        # diff_fY|X(y)*phi(t)的积分
-                fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * phi_star(t=y_aux), axis=0)    # fY|X(t)*b(t, beta)*phi(t)的积分
+                fyx_1minus_phi_integral = tf.reduce_mean(fYX2y * (1 - pi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
+                dfyx_phi_integral = tf.reduce_mean(dfYX_beta2y * pi_star(t=y_aux), axis=0)        # diff_fY|X(y)*phi(t)的积分
+                fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * pi_star(t=y_aux), axis=0)    # fY|X(t)*b(t, beta)*phi(t)的积分
 
                 R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])               # Ri
                 Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral          # S^*_beta
@@ -215,6 +215,10 @@ def solve_Integral_Equa(R):
                 train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps)
                 train_op3 = my_optimizer.minimize(loss, global_step=global_steps)
                 train_my_loss = tf.group(train_op1, train_op2, train_op3)
+            elif R['train_group'] == 2:
+                train_op1 = my_optimizer.minimize(loss2b, global_step=global_steps)
+                train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps)
+                train_my_loss = tf.group(train_op1, train_op2)
             else:
                 train_my_loss = my_optimizer.minimize(loss, global_step=global_steps)
 
@@ -343,8 +347,10 @@ if __name__ == "__main__":
     R['optimizer_name'] = 'Adam'                # 优化器
     R['learning_rate'] = 1e-2                   # 学习率
     R['learning_rate_decay'] = 5e-3             # 学习率 decay
+
+    # R['train_group'] = 0
     # R['train_group'] = 1
-    R['train_group'] = 0
+    R['train_group'] = 2
 
     R['regular_weight_model'] = 'L0'
     # R['regular_weight_model'] = 'L1'
