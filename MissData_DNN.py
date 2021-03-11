@@ -69,8 +69,8 @@ def solve_Integral_Equa(R):
         os.mkdir(log_out_path)            # 无 log_out_path 路径，创建一个 log_out_path 路径
     outFile2para_name = '%s_%s.txt' % ('para2', 'beta')
     logfile_name = '%s%s.txt' % ('log2', R['activate_func'])
-    log_fileout = open(os.path.join(log_out_path, logfile_name), 'w')  # 在这个路径下创建并打开一个可写的 log_train.txt文件
-    para_outFile = open(os.path.join(log_out_path, outFile2para_name), 'w')  # 在这个路径下创建并打开一个可写的 log_train.txt文件
+    log_fileout = open(os.path.join(log_out_path, logfile_name), 'w')       # 在这个路径下创建并打开一个可写的 log_train.txt文件
+    para_outFile = open(os.path.join(log_out_path, outFile2para_name), 'w') # 在这个路径下创建并打开一个可写的 para_outFile.txt文件
     dictionary_out2file(R, log_fileout)
 
     # 积分方程问题需要的设置
@@ -142,12 +142,12 @@ def solve_Integral_Equa(R):
                 dfYX_beta = tf.matmul(my_normal(t=y_aux-tf.matmul(beta, XiTrans))*(y_aux-tf.matmul(beta, XiTrans)), OneX)  # fY|X(y)对beta的导数
 
                 # beta 是 1 行 para_dim 列
-                fyx_1minus_phi_integral = tf.reduce_mean(fYX_y * (1 - pi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
-                dfyx_phi_integral = tf.reduce_mean(dfYX_beta * pi_star(t=y_aux), axis=0)          # diff_fY|X(y)*phi(t)的积分
+                fyx_1minus_phi_integral = tf.reduce_mean(fYX_y * (1 - pi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-pi(t))的积分
+                dfyx_phi_integral = tf.reduce_mean(dfYX_beta * pi_star(t=y_aux), axis=0)          # diff_fY|X(y)*pi(t)的积分
                 ceof_vec2left = dfyx_phi_integral/fyx_1minus_phi_integral
                 sum2bleft = sum2bleft + dfYX_beta + ceof_vec2left*fYX_y
 
-                b_fyx_phi_integral = tf.reduce_mean(b_NN2y*fYX_y*pi_star(t=y_aux), axis=0)        # b(t, beta)*fY|X(t)*phi(t)的积分
+                b_fyx_phi_integral = tf.reduce_mean(b_NN2y*fYX_y*pi_star(t=y_aux), axis=0)        # b(t, beta)*fY|X(t)*pi(t)的积分
                 ceof_vec2right = b_fyx_phi_integral / fyx_1minus_phi_integral
                 sum2bright = sum2bright + b_NN2y * fYX_y + ceof_vec2right * fYX_y
 
@@ -169,9 +169,9 @@ def solve_Integral_Equa(R):
                 dfYX_beta2Y = tf.matmul(my_normal(t=Yi-tf.matmul(beta, XiTrans))*(Yi-tf.matmul(beta, XiTrans)), OneX)   # diff_fY|X(Yi)
                 dfYX_beta2y = tf.matmul(my_normal(t=y_aux - tf.matmul(beta, XiTrans)) * (y_aux - tf.matmul(beta, XiTrans)), OneX)  # diff_fY|X(t)
 
-                fyx_1minus_phi_integral = tf.reduce_mean(fYX2y * (1 - pi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-phi(t))的积分
-                dfyx_phi_integral = tf.reduce_mean(dfYX_beta2y * pi_star(t=y_aux), axis=0)        # diff_fY|X(y)*phi(t)的积分
-                fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * pi_star(t=y_aux), axis=0)    # fY|X(t)*b(t, beta)*phi(t)的积分
+                fyx_1minus_phi_integral = tf.reduce_mean(fYX2y * (1 - pi_star(t=y_aux)), axis=0)  # fY|X(t)*(1-pi(t))的积分
+                dfyx_phi_integral = tf.reduce_mean(dfYX_beta2y * pi_star(t=y_aux), axis=0)        # diff_fY|X(y)*pi(t)的积分
+                fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * pi_star(t=y_aux), axis=0)    # fY|X(t)*b(t, beta)*pi(t)的积分
 
                 R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])               # Ri
                 Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral          # S^*_beta
@@ -279,7 +279,7 @@ def solve_Integral_Equa(R):
 if __name__ == "__main__":
     R={}
     # -------------------------------------- CPU or GPU 选择 -----------------------------------------------
-    R['gpuNo'] = 0
+    R['gpuNo'] = 2
     # 默认使用 GPU，这个标记就不要设为-1，设为0,1,2,3,4....n（n指GPU的数目，即电脑有多少块GPU）
     # os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # -1代表使用 CPU 模式
     # os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 设置当前使用的GPU设备仅为第 0 块GPU, 设备名称为'/gpu:0'
