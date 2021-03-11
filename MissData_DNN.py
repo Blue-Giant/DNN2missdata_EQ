@@ -54,8 +54,8 @@ def Bernoulli(Z=None):
 
 
 def pi_star(t=None):
-    phi = tf.exp(1 - t) / (1 + tf.exp(1 - t))
-    return phi
+    pi = tf.exp(1 - t) / (1 + tf.exp(1 - t))
+    return pi
 
 
 def my_normal(t=None):
@@ -174,7 +174,7 @@ def solve_Integral_Equa(R):
                 fyx_b_phi_integral = tf.reduce_mean(fYX2y * b_NN2y * pi_star(t=y_aux), axis=0)    # fY|X(t)*b(t, beta)*pi(t)的积分
 
                 R2XY_i = tf.reshape(R2XY[i], shape=[1, -1])               # Ri
-                Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral          # S^*_beta
+                Seff1 = (R2XY_i/fYX2Y) * dfYX_beta2Y - ((1-R2XY_i)/fyx_1minus_phi_integral) * dfyx_phi_integral  # S^*_beta
 
                 if R['model'] == 'DNN':
                     b_NN2Yi = DNN_base.PDE_DNN(Yi, W2b, B2b, hidden_layers, activate_name=act_func)
