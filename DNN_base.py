@@ -361,19 +361,25 @@ def initialize_NN_random_normal(in_size, out_size, hidden_layers, Flag, varcoe=0
         return Weights, Biases
 
 
-def initialize_NN_random_normal2(in_size, out_size, hidden_layers, Flag, varcoe=0.5):
+def initialize_NN_random_normal2(in_size, out_size, hidden_layers, Flag, varcoe=0.5, unit_const_Init1layer=False):
     with tf.variable_scope('WB_scope', reuse=tf.AUTO_REUSE):
         n_hiddens = len(hidden_layers)
         Weights = []  # 权重列表，用于存储隐藏层的权重
         Biases = []  # 偏置列表，用于存储隐藏层的偏置
         # 隐藏层：第一层的权重和偏置，对输入数据做变换
-        stddev_WB = (2.0 / (in_size + hidden_layers[0])) ** varcoe
-        W = tf.get_variable(name='W-transInput' + str(Flag), shape=(in_size, hidden_layers[0]),
-                            initializer=tf.random_normal_initializer(stddev=stddev_WB),
+        if unit_const_Init1layer==True:
+            W = tf.constant(1, name='W-transInput' + str(Flag), shape=(in_size, hidden_layers[0]),
                             dtype=tf.float32)
-        B = tf.get_variable(name='B-transInput' + str(Flag), shape=(hidden_layers[0],),
-                            initializer=tf.random_normal_initializer(stddev=stddev_WB),
+            B = tf.constant(1, name='B-transInput' + str(Flag), shape=(hidden_layers[0],),
                             dtype=tf.float32)
+        else:
+            stddev_WB = (2.0 / (in_size + hidden_layers[0])) ** varcoe
+            W = tf.get_variable(name='W-transInput' + str(Flag), shape=(in_size, hidden_layers[0]),
+                                initializer=tf.random_normal_initializer(stddev=stddev_WB),
+                                dtype=tf.float32)
+            B = tf.get_variable(name='B-transInput' + str(Flag), shape=(hidden_layers[0],),
+                                initializer=tf.random_normal_initializer(stddev=stddev_WB),
+                                dtype=tf.float32)
         Weights.append(W)
         Biases.append(B)
         for i_layer in range(0, n_hiddens - 1):
@@ -398,19 +404,25 @@ def initialize_NN_random_normal2(in_size, out_size, hidden_layers, Flag, varcoe=
         return Weights, Biases
 
 
-def initialize_NN_random_normal2_CS(in_size, out_size, hidden_layers, Flag, varcoe=0.5):
+def initialize_NN_random_normal2_CS(in_size, out_size, hidden_layers, Flag, varcoe=0.5, unit_const_Init1layer=False):
     with tf.variable_scope('WB_scope', reuse=tf.AUTO_REUSE):
         n_hiddens = len(hidden_layers)
         Weights = []  # 权重列表，用于存储隐藏层的权重
         Biases = []  # 偏置列表，用于存储隐藏层的偏置
         # 隐藏层：第一层的权重和偏置，对输入数据做变换
-        stddev_WB = (2.0 / (in_size + hidden_layers[0])) ** varcoe
-        W = tf.get_variable(name='W-transInput' + str(Flag), shape=(in_size, hidden_layers[0]),
-                            initializer=tf.random_normal_initializer(stddev=stddev_WB),
+        if unit_const_Init1layer==True:
+            W = tf.constant(1, name='W-transInput' + str(Flag), shape=(in_size, hidden_layers[0]),
                             dtype=tf.float32)
-        B = tf.get_variable(name='B-transInput' + str(Flag), shape=(hidden_layers[0],),
-                            initializer=tf.random_normal_initializer(stddev=stddev_WB),
+            B = tf.constant(1, name='B-transInput' + str(Flag), shape=(hidden_layers[0],),
                             dtype=tf.float32)
+        else:
+            stddev_WB = (2.0 / (in_size + hidden_layers[0])) ** varcoe
+            W = tf.get_variable(name='W-transInput' + str(Flag), shape=(in_size, hidden_layers[0]),
+                                initializer=tf.random_normal_initializer(stddev=stddev_WB),
+                                dtype=tf.float32)
+            B = tf.get_variable(name='B-transInput' + str(Flag), shape=(hidden_layers[0],),
+                                initializer=tf.random_normal_initializer(stddev=stddev_WB),
+                                dtype=tf.float32)
         Weights.append(W)
         Biases.append(B)
 
@@ -476,8 +488,8 @@ def PDE_DNN(variable_input, Weights, Biases, hiddens, activate_name=None):
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -538,8 +550,8 @@ def PDE_DNN_BN(variable_input, Weights, Biases, hiddens, activate_name=None, is_
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -601,8 +613,8 @@ def PDE_DNN_scale(variable_input, Weights, Biases, hiddens, freq_frag, activate_
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -684,8 +696,8 @@ def PDE_subDNNs_scale(variable_input, Wlists, Blists, hiddens, freq_frag, activa
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -785,8 +797,8 @@ def PDE_DNN_adapt_scale(variable_input, Weights, Biases, hiddens, freq_frag, act
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -872,8 +884,8 @@ def PDE_subDNNs_adapt_scale(variable_input, Wlists, Blists, hiddens, freq_frag, 
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -972,8 +984,8 @@ def PDE_DNN_FourierBase(variable_input, Weights, Biases, hiddens, freq_frag, act
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -1060,8 +1072,8 @@ def PDE_subDNNs_FourierBase(variable_input, Wlists, Blists, hiddens, freq_frag, 
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -1161,8 +1173,8 @@ def PDE_DNN_Sine0rCosine_Base(variable_input, Weights, Biases, hiddens, freq_fra
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -1243,7 +1255,7 @@ def PDE_DNN_Sine0rCosine_Base(variable_input, Weights, Biases, hiddens, freq_fra
 
 
 # Sin_C_Cos 代表 cos concatenate sin according to row（i.e. the number of sampling points）
-def PDE_DNN_Cos_C_Sin_Base(variable_input, Weights, Biases, hiddens, freq_frag, activate_name=None):
+def PDE_DNN_Cos_C_Sin_Base(variable_input, Weights, Biases, hiddens, freq_frag, activate_name=None, addBias=False):
     if str.lower(activate_name) == 'relu':
         DNN_activation = tf.nn.relu
     elif str.lower(activate_name) == 'leaky_relu':
@@ -1252,8 +1264,8 @@ def PDE_DNN_Cos_C_Sin_Base(variable_input, Weights, Biases, hiddens, freq_frag, 
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -1305,10 +1317,13 @@ def PDE_DNN_Cos_C_Sin_Base(variable_input, Weights, Biases, hiddens, freq_frag, 
     W_in = Weights[0]
     B_in = Biases[0]
     if len(freq_frag) == 1:
-        H = tf.add(tf.matmul(H, W_in), B_in)
+        H = tf.matmul(H, W_in)
     else:
         # H = tf.add(tf.matmul(H, W_in)*mixcoe, B_in)
         H = tf.matmul(H, W_in) * mixcoe
+
+    if addBias==True:
+        H = tf.add(H, B_in)
 
     # H = tf.concat([tf.cos(H), tf.sin(H)], axis=1)
     H = 0.5 * (tf.concat([tf.cos(H), tf.sin(H)], axis=1))  # 这个效果好
@@ -1344,8 +1359,8 @@ def PDE_DNN_WaveletBase(variable_input, Weights, Biases, hiddens, scale_frag, ac
         DNN_activation = srelu
     elif str.lower(activate_name) == 's2relu':
         DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
+    elif str.lower(activate_name) == 'sigmoid':
+        DNN_activation = tf.nn.sigmoid
     elif str.lower(activate_name) == 'csrelu':
         DNN_activation = csrelu
     elif str.lower(activate_name) == 'sin2_srelu':
@@ -1424,66 +1439,4 @@ def PDE_DNN_WaveletBase(variable_input, Weights, Biases, hiddens, scale_frag, ac
     output = tf.add(tf.matmul(H, W_out), B_out)
     # 下面这个是输出层
     # output = tf.nn.tanh(output)
-    return output
-
-
-def DNN_attendion(variable_input, Weights, Biases, hiddens, activate_name=None):
-    if str.lower(activate_name) == 'relu':
-        DNN_activation = tf.nn.relu
-    elif str.lower(activate_name) == 'leaky_relu':
-        DNN_activation = tf.nn.leaky_relu(0.2)
-    elif str.lower(activate_name) == 'srelu':
-        DNN_activation = srelu
-    elif str.lower(activate_name) == 's2relu':
-        DNN_activation = s2relu
-    elif str.lower(activate_name) == 's3relu':
-        DNN_activation = s3relu
-    elif str.lower(activate_name) == 'csrelu':
-        DNN_activation = csrelu
-    elif str.lower(activate_name) == 'sin2_srelu':
-        DNN_activation = sin2_srelu
-    elif str.lower(activate_name) == 'powsin_srelu':
-        DNN_activation = powsin_srelu
-    elif str.lower(activate_name) == 'slrelu':
-        DNN_activation = slrelu
-    elif str.lower(activate_name) == 'elu':
-        DNN_activation = tf.nn.elu
-    elif str.lower(activate_name) == 'selu':
-        DNN_activation = selu
-    elif str.lower(activate_name) == 'sin':
-        DNN_activation = mysin
-    elif str.lower(activate_name) == 'tanh':
-        DNN_activation = tf.nn.tanh
-    elif str.lower(activate_name) == 'sintanh':
-        DNN_activation = stanh
-    elif str.lower(activate_name) == 'gauss':
-        DNN_activation = gauss
-    elif str.lower(activate_name) == 'singauss':
-        DNN_activation = singauss
-    elif str.lower(activate_name) == 'mexican':
-        DNN_activation = mexican
-    elif str.lower(activate_name) == 'modify_mexican':
-        DNN_activation = modify_mexican
-    elif str.lower(activate_name) == 'sin_modify_mexican':
-        DNN_activation = sm_mexican
-    elif str.lower(activate_name) == 'phi':
-        DNN_activation = phi
-
-    layers = len(hiddens) + 1               # 得到输入到输出的层数，即隐藏层层数
-    H = variable_input                      # 代表输入数据，即输入层
-    hidden_record = 0
-    for k in range(layers-1):
-        H_pre = H
-        W = Weights[k]
-        B = Biases[k]
-        H = DNN_activation(tf.add(tf.matmul(H, W), B))
-        if hiddens[k] == hidden_record:
-            H = H+H_pre
-        hidden_record = hiddens[k]
-
-    W_out = Weights[-1]
-    B_out = Biases[-1]
-    output = tf.add(tf.matmul(H, W_out), B_out)
-    # 下面这个是输出层
-    output = tf.nn.softmax(output)
     return output

@@ -3,7 +3,7 @@ import numpy as np
 
 # ---------------------------------------------- 数据集的生成 ---------------------------------------------------
 #  方形区域[a,b]^n生成随机数, n代表变量个数
-def rand_it(batch_size, variable_dim, region_a, region_b):
+def rand_it(batch_size=10, variable_dim=1, region_a=0.0, region_b=1.0):
     # np.random.rand( )可以返回一个或一组服从“0~1”均匀分布的随机样本值。随机样本取值范围是[0,1)，不包括1。
     # np.random.rand(3,2 )可以返回一个或一组服从“0~1”均匀分布的随机矩阵(3行2列)。随机样本取值范围是[0,1)，不包括1。
     x_it = (region_b - region_a) * np.random.rand(batch_size, variable_dim) + region_a

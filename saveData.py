@@ -5,18 +5,26 @@
 import scipy.io as scio
 
 
-def save_trainLoss2mat_1actFunc(loss_it, loss_bd, loss, actName=None, outPath=None):
-    # if actName == 's2ReLU':
-    #     outFile2data = '%s/Loss2s2ReLU.mat' % (outPath)
-    # if actName == 'sReLU':
-    #     outFile2data = '%s/Loss2sReLU.mat' % (outPath)
-    # if actName == 'ReLU':
-    #     outFile2data = '%s/Loss2ReLU.mat' % (outPath)
+def save_1trainLoss2mat(lossData, dataName=None, actName=None, outPath=None):
     outFile2data = '%s/Loss2%s.mat' % (outPath, actName)
-    key2mat_1 = 'loss_it'
-    key2mat_2 = 'loss_bd'
-    key2mat_3 = 'loss'
-    scio.savemat(outFile2data, {key2mat_1: loss_it, key2mat_2: loss_bd, key2mat_3: loss})
+    key2mat = str(dataName)
+    scio.savemat(outFile2data, {key2mat: lossData})
+
+
+def save_2trainLosses2mat(lossData1, lossData2, data1Name=None, data2Name=None, actName=None, outPath=None):
+    outFile2data = '%s/Loss2%s.mat' % (outPath, actName)
+    key2mat_1 = str(data1Name)
+    key2mat_2 = str(data2Name)
+    scio.savemat(outFile2data, {key2mat_1: lossData1, key2mat_2: lossData2})
+
+
+def save_3trainLosses2mat(lossData1, lossData2, lossData3, data1Name=None, data2Name=None, data3Name=None,
+                          actName=None, outPath=None):
+    outFile2data = '%s/Loss2%s.mat' % (outPath, actName)
+    key2mat_1 = str(data1Name)
+    key2mat_2 = str(data2Name)
+    key2mat_3 = str(data3Name)
+    scio.savemat(outFile2data, {key2mat_1: lossData1, key2mat_2: lossData2, key2mat_3: lossData3})
 
 
 def save_trainLoss2mat_1act_Func(loss_it, loss_bd, loss_bdd, loss, actName=None, outPath=None):
