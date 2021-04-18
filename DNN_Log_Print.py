@@ -30,8 +30,8 @@ def dictionary_out2file(R_dic, log_fileout):
         DNN_tools.log_string('optimizer:%s\n' % str(R_dic['optimizer_name']), log_fileout)
     else:
         DNN_tools.log_string('optimizer:%s  with momentum=%f\n' % (R_dic['optimizer_name'], R_dic['momentum']), log_fileout)
-    if R_dic['train_model'] == 'Combine_train':
-        DNN_tools.log_string('Training model: Combine training\n', log_fileout)
+    if R_dic['training_strategy'] == 'Combine_train':
+        DNN_tools.log_string('Training strategy: Combine training\n', log_fileout)
 
         DNN_tools.log_string('Init learning rate: %s\n' % str(R_dic['init_learning_rate']), log_fileout)
         DNN_tools.log_string('Decay to learning rate: %s\n' % str(R_dic['learning_rate_decay']), log_fileout)
@@ -43,7 +43,7 @@ def dictionary_out2file(R_dic, log_fileout):
         elif R_dic['train_group'] == 2:
             DNN_tools.log_string('Training parts loss \n', log_fileout)
     else:
-        DNN_tools.log_string('Training model: Alternate training\n', log_fileout)
+        DNN_tools.log_string('Training strategy: Alternate training\n', log_fileout)
         DNN_tools.log_string('Init learning rate for b: %s\n' % str(R_dic['init_learning_rate2b']), log_fileout)
         DNN_tools.log_string('Init learning rate for Seff: %s\n' % str(R_dic['init_learning_rate2S']), log_fileout)
         DNN_tools.log_string('Decay to learning rate for b: %s\n' % str(R_dic['learning_rate_decay2b']), log_fileout)

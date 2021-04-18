@@ -55,7 +55,7 @@ def solve_Integral_Equa(R):
     batchsize2b = R['batch_size2y_b']
     batchsize2integral = R['batch_size2integral']
     wb_regular = R['regular_weight_biases']
-    if R['train_model'] == 'Alter_train':
+    if R['training_strategy'] == 'Alter_train':
         init_lr2b = R['init_learning_rate2b']
         init_lr2S = R['init_learning_rate2S']
         lr_decay2b = R['learning_rate_decay2b']
@@ -272,7 +272,7 @@ def solve_Integral_Equa(R):
 
             penalty_WB = wb_regular * regular_WB2b
 
-            if R['train_model'] == 'Alter_train':
+            if R['training_strategy'] == 'Alter_train':
                 lossB = loss2b + penalty_WB
                 lossSeff = loss2Seff + penalty_WB
 
@@ -318,7 +318,7 @@ def solve_Integral_Equa(R):
 
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
-        if R['train_model'] == 'Alter_train':
+        if R['training_strategy'] == 'Alter_train':
             tmp_lr2b = init_lr2b
             tmp_lr2S = init_lr2S
             for i_epoch in range(R['max_epoch'] + 1):
