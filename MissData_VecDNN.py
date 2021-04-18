@@ -13,55 +13,9 @@ import DNN_data
 import time
 import DNN_base
 import DNN_tools
+import DNN_Log_Print
 import plotData
 import saveData
-
-
-# 记录字典中的一些设置
-def dictionary_out2file(R_dic, log_fileout):
-    DNN_tools.log_string('PDE type for problem: %s\n' % (R_dic['PDE_type']), log_fileout)
-    DNN_tools.log_string('Equation name for problem: %s\n' % (R_dic['eqs_name']), log_fileout)
-
-    if R_dic['activate_stop'] != 0:
-        DNN_tools.log_string('activate the stop_step and given_step= %s\n' % str(R_dic['max_epoch']), log_fileout)
-    else:
-        DNN_tools.log_string('no activate the stop_step and given_step = default: %s\n' % str(R_dic['max_epoch']), log_fileout)
-
-    DNN_tools.log_string('If subnetwork model for problem: %s\n' % str(R_dic['sub_networks']), log_fileout)
-
-    DNN_tools.log_string('Network-name of solving problem: %s\n' % str(R_dic['name2network']), log_fileout)
-    DNN_tools.log_string('Activate function for network: %s\n' % str(R_dic['activate_func']), log_fileout)
-    if R_dic['name2network'] != 'DNN':
-        DNN_tools.log_string('The frequency to neural network: %s\n' % (R_dic['freqs']), log_fileout)
-
-    if (R_dic['optimizer_name']).title() == 'Adam':
-        DNN_tools.log_string('optimizer:%s\n' % str(R_dic['optimizer_name']), log_fileout)
-    else:
-        DNN_tools.log_string('optimizer:%s  with momentum=%f\n' % (R_dic['optimizer_name'], R_dic['momentum']), log_fileout)
-    if R_dic['train_model'] == 'Combine_train':
-        DNN_tools.log_string('Training model: Combine training\n', log_fileout)
-
-        DNN_tools.log_string('Init learning rate: %s\n' % str(R_dic['init_learning_rate']), log_fileout)
-        DNN_tools.log_string('Decay to learning rate: %s\n' % str(R_dic['learning_rate_decay']), log_fileout)
-
-        if R_dic['train_group'] == 0:
-            DNN_tools.log_string('Training total loss \n', log_fileout)
-        elif R_dic['train_group'] == 1:
-            DNN_tools.log_string('Training total loss + parts loss \n', log_fileout)
-        elif R_dic['train_group'] == 2:
-            DNN_tools.log_string('Training parts loss \n', log_fileout)
-    else:
-        DNN_tools.log_string('Training model: Alternate training\n', log_fileout)
-        DNN_tools.log_string('Init learning rate for b: %s\n' % str(R_dic['init_learning_rate2b']), log_fileout)
-        DNN_tools.log_string('Init learning rate for Seff: %s\n' % str(R_dic['init_learning_rate2S']), log_fileout)
-        DNN_tools.log_string('Decay to learning rate for b: %s\n' % str(R_dic['learning_rate_decay2b']), log_fileout)
-        DNN_tools.log_string('Decay to learning rate for Seff: %s\n' % str(R_dic['learning_rate_decay2S']), log_fileout)
-
-    DNN_tools.log_string('hidden layer:%s\n' % str(R_dic['hidden_layers']), log_fileout)
-
-    DNN_tools.log_string('Batch-size for solving B and Seff(data size) : %s\n' % str(R_dic['batch_size2bS']), log_fileout)
-    DNN_tools.log_string('Batch-size for solving b 2 y : %s\n' % str(R_dic['batch_size2y_b']), log_fileout)
-    DNN_tools.log_string('Batch-size for solving integral function: %s\n' % str(R_dic['batch_size2integral']), log_fileout)
 
 
 def Bernoulli(Z=None):
@@ -94,7 +48,7 @@ def solve_Integral_Equa(R):
     logfile_name = '%s%s.txt' % ('log2', R['activate_func'])
     log_fileout = open(os.path.join(log_out_path, logfile_name), 'w')       # 在这个路径下创建并打开一个可写的 log_train.txt文件
     para_outFile = open(os.path.join(log_out_path, outFile2para_name), 'w') # 在这个路径下创建并打开一个可写的 para_outFile.txt文件
-    dictionary_out2file(R, log_fileout)
+    DNN_Log_Print.dictionary_out2file(R, log_fileout)
 
     # 积分方程问题需要的设置
     batchsize2bS = R['batch_size2bS']
@@ -210,20 +164,20 @@ def solve_Integral_Equa(R):
                     b_NN2Y = DNN_base.PDE_DNN_Cos_C_Sin_Base(Y_beta, W2b, B2b, hidden_layers, freq, activate_name=act_func)
 
             # 如下代码说明中 K 代表y的数目， N 代表 X 和 Y 的数目，M 代表 t 的数目
-            # 求 b 的代码
+            # 求 b 的代码，先处理等号左边，再处理等号右边
             OneX = tf.concat([tfOne, X], axis=-1)      # N 行 (1+dim) 列，N代表X数据数目
             betaT = tf.transpose(beta, perm=[1, 0])    # (1+dim) 行 1 列
             oneX_betaT= tf.matmul(OneX, betaT)         # N 行 1 列。每个 Xi 都会对应 beta。 beta 是 (1+dim) 行 1 列的
             tInte_beraXT = tf.transpose(t_inte, perm=[1, 0]) - oneX_betaT  # N 行 M 列，t_inte 是 M 行 dim 列的
 
-            # 左边系数分母
+            # b方程左边系数分母，关于t求和平均代替积分
             fYX_t = fYX(z=tInte_beraXT, func_name='gaussian')         # fY|X在t处的取值  # N 行 M 列
             phi_1 = tf.transpose(1 - pi_star(t=t_inte), perm=[1, 0])  # M 行 dim 列转置为 dim 行 M 列
             fYXt_1phi = tf.multiply(fYX_t, phi_1)                     # N 行 M 列
             fYXt_1phi_intergal = tf.reduce_mean(fYXt_1phi, axis=-1)
             fYXt_1phi_intergal = tf.reshape(fYXt_1phi_intergal, shape=[-1, 1])  # N 行 dim 列
 
-            # 左边系数分子
+            # b方程左边系数分子，关于t求和平均代替积分
             dbeta2fYX_t =fYX_t * tInte_beraXT                                             # N 行 M 列
             expand_dbeta2fYX_t = tf.expand_dims(dbeta2fYX_t, axis=1)                      # N 页 1 行 M 列
             tilde_Edbeta2fYX_t = tf.tile(expand_dbeta2fYX_t, [1, data_indim+1, 1])        # N 页 (1+dim) 行 M 列
@@ -232,47 +186,54 @@ def solve_Integral_Equa(R):
             dfYX_beta_phi_t = tf.multiply(dfYX_beta_t, phi_t)              # N 页 (1+dim) 行 M 列
             dfYX_beta_integral = tf.reduce_mean(dfYX_beta_phi_t, axis=-1)  # N 页 (1+dim) 行
 
+            # b方程左边的系数
+            ceof2left = dfYX_beta_integral / fYXt_1phi_intergal            # N 行 (1+dim) 列
+            # b方程左边积分系数的匹配项
             yaux_beraXT = tf.transpose(y, perm=[1, 0]) - oneX_betaT        # N 行 K 列， y 是 K 行 data_dim 列
             fYX_y = fYX(z=yaux_beraXT, func_name='gaussian')               # fY|X在y处的取值, N 行 K 列
-            ceof2left = dfYX_beta_integral / fYXt_1phi_intergal            # N 行 (1+dim) 列
             expand_fYX_y = tf.expand_dims(fYX_y, axis=1)                   # N 页 1 行 K 列
             bleft_fYX_y = tf.multiply(tf.expand_dims(ceof2left, axis=-1), expand_fYX_y)    # N 页 (1+dim) 行 K 列
 
-            # 求 dfYX2beta(y,Xi,beta)
+            # b方程左边的第一个关于beta的导数项， 即dfYX2beta(y,Xi,beta)
             dbeta2fYX_y = fYX_y * yaux_beraXT                                              # N 行 K 列
             expand_dbeta2fYX_y = tf.expand_dims(dbeta2fYX_y, axis=1)                       # N 页 1 行 K 列
             dfYX_beta_y = tf.multiply(expand_dbeta2fYX_y, tf.expand_dims(OneX, axis=-1))   # N 页 (1+dim) 行 K 列
 
+            # b方程左边的组合结果
             sum2bleft = bleft_fYX_y + dfYX_beta_y       # N 页 (1+dim) 行 K 列
             bleft = tf.reduce_mean(sum2bleft, axis=0)   # 1+dim 行 K 列
 
-            # 求 b 方程的右边
+            # b 方程的右边。右边的第一项，如下两行计算
             trans_b_NN2y = tf.transpose(b_NN2y, perm=[1, 0])    # K 行 2 列转置为 2 行 K 列,然后扩为 1 X 2 X K 的
             by_fYX_y = tf.multiply(tf.expand_dims(trans_b_NN2y, axis=0), tf.expand_dims(fYX_y, axis=1))  # N 页 1+dim 行 K 列
 
+            # b方程右边的系数的分子
             expand_fYX_t = tf.tile(tf.expand_dims(fYX_t, axis=1), [1, 1+data_indim, 1])  # N 页 (1+data_indim) 行 M 列
             bt_fYXt = tf.multiply(tf.transpose(b_NN2t, perm=[1, 0]), expand_fYX_t)       # N 页 (1+data_indim) 行 M 列
-
             bt_fYXt_phi = tf.multiply(bt_fYXt, phi_t)                                    # N 页 (1+data_indim) 行 M 列
-
             bt_fYXt_phi_integral = tf.reduce_mean(bt_fYXt_phi, axis=-1)                  # N 行 (1+data_indim) 列
 
+            # b方程右边的系数。分母为共用b方程左边的分母
             ceof2fight = bt_fYXt_phi_integral / fYXt_1phi_intergal                       # N 行 (1+data_indim) 列
+
+            # b方程系数与匹配项的线性积
             expand_fYX_y_right = tf.expand_dims(fYX_y, axis=1)                           # N 页 1 行 K 列
             bright_fYX_y = tf.multiply(tf.expand_dims(ceof2fight, axis=-1), expand_fYX_y_right)  # N 页 (1+data_indim) 行 K 列
 
-            sum2right = by_fYX_y + bright_fYX_y
-            bright = tf.reduce_mean(sum2right, axis=0)
+            # b方程右边的组合结果
+            sum2right = by_fYX_y + bright_fYX_y           # N 页 (1+dim) 行 K 列
+            bright = tf.reduce_mean(sum2right, axis=0)    # 1+dim 行 K 列
 
+            # b方程左边和右边要相等，使用差的平方来估计
             loss2b = tf.reduce_mean(tf.reduce_mean(tf.square(bleft - bright), axis=-1))
 
             # 求 Seff 的代码
-            Y_beraXT = Y - oneX_betaT                      # N 行 1 列
+            Y_beraXT = Y - oneX_betaT                      # N 行 dim 列， Y 和 oneX_betaT 都是 N 行 dim 列的
 
             fYX_Y = fYX(z=Y_beraXT, func_name='gaussian')  # fY|X在t处的取值  # N 行 dim 列
-            ceof2R = (R2XY/fYX_Y)                          # N 行 dim 列
+            ceof2R = (R2XY/fYX_Y)                          # N 行 dim 列， R2XY 是 N 行 dim 列的
             dbeta2fYX_Y = tf.multiply(fYX_Y, Y_beraXT)     # N 行 dim 列
-            dfYX_beta_Y = tf.multiply(dbeta2fYX_Y, OneX)   # fY|X(t)对beta的导数，N 行 (1+dim)
+            dfYX_beta_Y = tf.multiply(dbeta2fYX_Y, OneX)   # fY|X(t)对beta的导数，N行(1+dim)列，OneX 是 N 行 (1+dim) 列
 
             Sbeta_star1 = tf.multiply(ceof2R, dfYX_beta_Y)                                      # N 行 (1+dim)
 
@@ -320,7 +281,7 @@ def solve_Integral_Equa(R):
                 train_loss2b = my_optimizer2b.minimize(lossB, global_step=global_steps)
                 train_loss2Seff = my_optimizer2Seff.minimize(lossSeff, global_step=global_steps)
             else:
-                loss = loss2b + loss2Seff + penalty_WB  # 要优化的loss function
+                loss = 5*loss2b + 10*loss2Seff + penalty_WB  # 要优化的loss function
 
                 my_optimizer = tf.train.AdamOptimizer(inline_lr)
                 if R['train_group'] == 0:
@@ -361,21 +322,18 @@ def solve_Integral_Equa(R):
             tmp_lr2b = init_lr2b
             tmp_lr2S = init_lr2S
             for i_epoch in range(R['max_epoch'] + 1):
-
                 if i_epoch % 10 == 0 and i_epoch != 0:  # 10, 20, 30, 40,.....
                     tmp_lr2S = tmp_lr2S * (1 - lr_decay2S)
                     _S, loss2seff_tmp, loss2b_tmp, p_WB, beta_temp = sess.run(
                         [train_loss2Seff, loss2Seff, loss2b, penalty_WB, beta],
                         feed_dict={X: X_batch, Y: Y_batch, R2XY: relate2XY, y: y_batch, tfOne: one2train,
                                    t_inte: t_batch, inline_lr2S: tmp_lr2S})
-
                 else:  # 0,1,2,3,4,5,6,7,8,9, 11,12,13,....,19, 21,22,....
                     tmp_lr2b = tmp_lr2b * (1 - lr_decay2b)
                     _b, loss2b_tmp, loss2seff_tmp, p_WB, beta_temp = sess.run(
                         [train_loss2b, loss2b, loss2Seff, penalty_WB, beta],
                         feed_dict={X: X_batch, Y: Y_batch, R2XY: relate2XY, y: y_batch, tfOne: one2train,
                                    t_inte: t_batch, inline_lr2b: tmp_lr2b})
-
                 loss_seff_all.append(loss2seff_tmp)
                 loss_b_all.append(loss2b_tmp)
                 if (i_epoch % 10) == 0:
@@ -383,6 +341,7 @@ def solve_Integral_Equa(R):
                                          log_fileout)
                     DNN_tools.log_string('lossb for training: %.10f\n' % loss2b_tmp, log_fileout)
                     DNN_tools.log_string('lossS for training: %.10f\n' % loss2seff_tmp, log_fileout)
+                    DNN_tools.log_string('Penalty2Weights_Bias for training: %.10f\n' % p_WB, log_fileout)
                 if (i_epoch % 100) == 0:
                     print('**************** epoch: %d*100 *******************' % int(i_epoch / 100))
                     print('beta:[%f %f]' % (beta_temp[0, 0], beta_temp[0, 1]))
@@ -395,11 +354,9 @@ def solve_Integral_Equa(R):
             saveData.save_2trainLosses2mat(loss_b_all, loss_seff_all, data1Name='lossb', data2Name='lossSeff',
                                            actName=act_func, outPath=R['FolderName'])
             plotData.plotTrain_loss_1act_func(loss_b_all, lossType='loss_b', seedNo=R['seed'],
-                                              outPath=R['FolderName'],
-                                              yaxis_scale=True)
+                                              outPath=R['FolderName'], yaxis_scale=True)
             plotData.plotTrain_loss_1act_func(loss_seff_all, lossType='loss_s', seedNo=R['seed'],
-                                              outPath=R['FolderName'],
-                                              yaxis_scale=True)
+                                              outPath=R['FolderName'], yaxis_scale=True)
         else:
             tmp_lr = init_lr
             for i_epoch in range(R['max_epoch'] + 1):
@@ -417,6 +374,7 @@ def solve_Integral_Equa(R):
                     DNN_tools.log_string('lossb for training: %.10f\n' % loss2b_tmp, log_fileout)
                     DNN_tools.log_string('lossS for training: %.10f\n' % loss2seff_tmp, log_fileout)
                     DNN_tools.log_string('loss for training: %.10f\n' % loss_tmp, log_fileout)
+                    DNN_tools.log_string('Penalty2Weights_Bias for training: %.10f\n' % p_WB, log_fileout)
                 if (i_epoch % 100) == 0:
                     print('**************** epoch: %d*100 *******************'% int(i_epoch/100))
                     print('beta:[%f %f]' % (beta_temp[0, 0], beta_temp[0, 1]))
@@ -460,7 +418,6 @@ if __name__ == "__main__":
     sys.path.append(BASE_DIR)
     OUT_DIR = os.path.join(BASE_DIR, store_file)
     if not os.path.exists(OUT_DIR):
-        print('---------------------- OUT_DIR ---------------------:', OUT_DIR)
         os.mkdir(OUT_DIR)
 
     R['seed'] = np.random.randint(1e5)
@@ -468,7 +425,7 @@ if __name__ == "__main__":
     FolderName = os.path.join(OUT_DIR, seed_str)  # 路径连接
     R['FolderName'] = FolderName
     if not os.path.exists(FolderName):
-        print('--------------------- FolderName -----------------:', FolderName)
+        print('--------------------- FolderName with path-----------------:', FolderName)
         os.mkdir(FolderName)
 
     # ----------------------------------------  复制并保存当前文件 -----------------------------------------
@@ -509,21 +466,25 @@ if __name__ == "__main__":
     if R['train_model'] == 'Alter_train':
         R['train_group'] = 0
         R['init_learning_rate2b'] = 1e-2  # 学习率
-        R['init_learning_rate2S'] = 1e-3  # 学习率
         R['learning_rate_decay2b'] = 5e-3  # 学习率 decay
-        R['learning_rate_decay2S'] = 5e-4  # 学习率 decay
+        R['init_learning_rate2S'] = 1e-3  # 学习率
+        R['learning_rate_decay2S'] = 1e-3  # 学习率 decay
     else:
         # R['train_group'] = 0
-        # R['train_group'] = 1
-        R['train_group'] = 2
+        R['train_group'] = 1
+        # R['train_group'] = 2
         R['init_learning_rate'] = 1e-2  # 学习率
         R['learning_rate_decay'] = 5e-3  # 学习率 decay
 
-    R['regular_weight_model'] = 'L0'
+    # R['regular_weight_model'] = 'L0'
     # R['regular_weight_model'] = 'L1'
-    # R['regular_weight_model'] = 'L2'
-    R['regular_weight_biases'] = 0.000                    # Regularization parameter for weights
-    # R['regular_weight_biases'] = 0.0001                  # Regularization parameter for weights
+    R['regular_weight_model'] = 'L2'
+    # R['regular_weight_biases'] = 0.000                    # Regularization parameter for weights
+    # R['regular_weight_biases'] = 0.1                      # Regularization parameter for weights
+    # R['regular_weight_biases'] = 0.01                     # Regularization parameter for weights
+    # R['regular_weight_biases'] = 0.001                    # Regularization parameter for weights
+    # R['regular_weight_biases'] = 0.0005                   # Regularization parameter for weights
+    R['regular_weight_biases'] = 0.0001  # Regularization parameter for weights
     # R['regular_weight_biases'] = 0.0025                 # Regularization parameter for weights
 
     # &&&&&&&&&&&&&&&&&&& 使用的网络模型 &&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -537,11 +498,13 @@ if __name__ == "__main__":
     if R['name2network'] != 'DNN':
         # 网络的频率范围设置
         # R['freqs'] = np.arange(1, 101)
-        R['freqs'] = np.concatenate(([1, 1, 1, 1], np.arange(1, 25 - 4)), axis=0)
+        R['freqs'] = np.concatenate(([1, 1, 1, 1], np.arange(1, 20)), axis=0)
+        # R['freqs'] = np.concatenate(([1, 1, 1, 1, 1, 1, 1, 1, 1], np.arange(1, 20)), axis=0)
 
     # &&&&&&&&&&&&&&&&&&&&&& 隐藏层的层数和每层神经元数目 &&&&&&&&&&&&&&&&&&&&&&&&&&&&
     if R['name2network'] == 'DNN_Cos_C_Sin_Base':
-        R['hidden_layers'] = (30, 20, 20, 10)
+        R['hidden_layers'] = (30, 20, 10)
+        # R['hidden_layers'] = (30, 20, 20, 10)
         # R['hidden_layers'] = (30, 20, 10, 10, 5)
         # R['hidden_layers'] = (100, 50, 30, 30, 20)
         # R['hidden_layers'] = (100, 100, 80, 80, 60)  # 1*200+200*100+100*80+80*80+80*60+60*1= 39460 个参数
@@ -551,7 +514,8 @@ if __name__ == "__main__":
         # R['hidden_layers'] = (100, 150, 100, 100, 80)  # 1*200+200*150+150*100+100*100+100*80+80*1= 63280 个参数
         # R['hidden_layers'] = (125, 150, 100, 100, 80)  # 1*250+250*150+150*100+100*100+100*80+80*1= 70830 个参数
     else:
-        R['hidden_layers'] = (30, 20, 20, 10)
+        R['hidden_layers'] = (30, 20, 10)
+        # R['hidden_layers'] = (30, 20, 20, 10)
         # R['hidden_layers'] = (30, 20, 10, 10, 5)
         # R['hidden_layers'] = (100, 50, 30, 30, 20)
         # R['hidden_layers'] = (400, 300, 300, 200, 100, 100, 50)
@@ -572,8 +536,8 @@ if __name__ == "__main__":
     R['bnn2beta'] = 'explicitly_related'  # bNN 和参数 beta 显式相关，即参数 beta 作为bNN的一个输入
     # R['bnn2beta'] = 'implicitly_related'    # bNN 和参数 beta 隐式相关，即参数 beta 不作为bNN的一个输入
     # bNN是一个整体的网络表示，还是分为几个独立的网格表示 b 的每一个分量 bi. b=(b0,b1,b2,......)
-    # R['sub_networks'] = 'subDNNs'
-    R['sub_networks'] = 'oneDNN'
+    R['sub_networks'] = 'subDNNs'
+    # R['sub_networks'] = 'oneDNN'
 
     solve_Integral_Equa(R)
 
