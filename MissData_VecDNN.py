@@ -50,7 +50,7 @@ def solve_Integral_Equa(R):
     para_outFile = open(os.path.join(log_out_path, outFile2para_name), 'w') # 在这个路径下创建并打开一个可写的 para_outFile.txt文件
     DNN_Log_Print.dictionary_out2file(R, log_fileout)
 
-    # 积分方程问题需要的设置
+    # 方程问题需要的设置
     batchsize2bS = R['batch_size2bS']
     batchsize2b = R['batch_size2y_b']
     batchsize2integral = R['batch_size2integral']
@@ -184,7 +184,7 @@ def solve_Integral_Equa(R):
             dfYX_beta_t = tf.multiply(tilde_Edbeta2fYX_t, tf.expand_dims(OneX, axis=-1))  # N 页 (1+dim) 行 M 列
             phi_t = tf.transpose(pi_star(t=t_inte), perm=[1, 0])           # M 行 1 列转置为 1 行 M 列
             dfYX_beta_phi_t = tf.multiply(dfYX_beta_t, phi_t)              # N 页 (1+dim) 行 M 列
-            dfYX_beta_integral = tf.reduce_mean(dfYX_beta_phi_t, axis=-1)  # N 页 (1+dim) 行
+            dfYX_beta_integral = tf.reduce_mean(dfYX_beta_phi_t, axis=-1)  # N 行 (1+dim) 列
 
             # b方程左边的系数
             ceof2left = dfYX_beta_integral / fYXt_1phi_intergal            # N 行 (1+dim) 列
@@ -275,11 +275,14 @@ def solve_Integral_Equa(R):
             if R['training_strategy'] == 'Alter_train':
                 lossB = loss2b + penalty_WB
                 lossSeff = loss2Seff + penalty_WB
-
+                if R['sub_networks'] == 'subDNNs':
+                    WB = [W2b0, B2b0, W2b1, B2b1]
+                else:
+                    WB = [W2b, B2b]
                 my_optimizer2b = tf.train.AdamOptimizer(inline_lr2b)
                 my_optimizer2Seff = tf.train.AdamOptimizer(inline_lr2S)
-                train_loss2b = my_optimizer2b.minimize(lossB, global_step=global_steps)
-                train_loss2Seff = my_optimizer2Seff.minimize(lossSeff, global_step=global_steps)
+                train_loss2b = my_optimizer2b.minimize(lossB, global_step=global_steps, var_list=WB)
+                train_loss2Seff = my_optimizer2Seff.minimize(lossSeff, global_step=global_steps, var_list=beta)
             else:
                 loss = 5*loss2b + 10*loss2Seff + penalty_WB  # 要优化的loss function
 
@@ -287,13 +290,21 @@ def solve_Integral_Equa(R):
                 if R['train_group'] == 0:
                     train_my_loss = my_optimizer.minimize(loss, global_step=global_steps)
                 if R['train_group'] == 1:
-                    train_op1 = my_optimizer.minimize(loss2b, global_step=global_steps)
-                    train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps)
+                    if R['sub_networks'] == 'subDNNs':
+                        WB = [W2b0, B2b0, W2b1, B2b1]
+                    else:
+                        WB = [W2b, B2b]
+                    train_op1 = my_optimizer.minimize(loss2b, global_step=global_steps, var_list=WB)
+                    train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps, var_list=beta)
                     train_op3 = my_optimizer.minimize(loss, global_step=global_steps)
                     train_my_loss = tf.group(train_op1, train_op2, train_op3)
                 elif R['train_group'] == 2:
-                    train_op1 = my_optimizer.minimize(loss2b, global_step=global_steps)
-                    train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps)
+                    if R['sub_networks'] == 'subDNNs':
+                        WB = [W2b0, B2b0, W2b1, B2b1]
+                    else:
+                        WB = [W2b, B2b]
+                    train_op1 = my_optimizer.minimize(loss2b, global_step=global_steps, var_list=WB)
+                    train_op2 = my_optimizer.minimize(loss2Seff, global_step=global_steps, var_list=beta)
                     train_my_loss = tf.group(train_op1, train_op2)
 
     t0 = time.time()
@@ -454,21 +465,22 @@ if __name__ == "__main__":
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup of DNN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # 训练集的设置
-    R['batch_size2bS'] = 2000                # 训练数据的批大小
-    # R['batch_size2bS'] = 5000                  # 训练数据的批大小
+    # R['batch_size2bS'] = 2000                # 训练数据的批大小
+    R['batch_size2bS'] = 5000                  # 训练数据的批大小
     R['batch_size2integral'] = 200             # 求积分时训练数据的批大小
     R['batch_size2y_b'] = 200                  # 求 b 时关于 y 变量训练数据的批大小
 
     R['optimizer_name'] = 'Adam'                # 优化器
 
-    # R['train_model'] = 'Alter_train'          # 交替训练模式
-    R['train_model'] = 'Combine_train'          # 组合训练模式
-    if R['train_model'] == 'Alter_train':
+    # R['training_strategy'] = 'Alter_train'          # 交替训练模式
+    R['training_strategy'] = 'Combine_train'          # 组合训练模式
+    if R['training_strategy'] == 'Alter_train':
         R['train_group'] = 0
-        R['init_learning_rate2b'] = 1e-2  # 学习率
+        R['init_learning_rate2b'] = 5e-3  # 学习率
         R['learning_rate_decay2b'] = 5e-3  # 学习率 decay
         R['init_learning_rate2S'] = 1e-3  # 学习率
-        R['learning_rate_decay2S'] = 1e-3  # 学习率 decay
+        R['learning_rate_decay2S'] = 5e-3  # 学习率 decay
+        # R['learning_rate_decay2S'] = 1e-2  # 学习率 decay
     else:
         # R['train_group'] = 0
         R['train_group'] = 1
@@ -476,9 +488,9 @@ if __name__ == "__main__":
         R['init_learning_rate'] = 1e-2  # 学习率
         R['learning_rate_decay'] = 5e-3  # 学习率 decay
 
-    # R['regular_weight_model'] = 'L0'
+    R['regular_weight_model'] = 'L0'
     # R['regular_weight_model'] = 'L1'
-    R['regular_weight_model'] = 'L2'
+    # R['regular_weight_model'] = 'L2'
     # R['regular_weight_biases'] = 0.000                    # Regularization parameter for weights
     # R['regular_weight_biases'] = 0.1                      # Regularization parameter for weights
     # R['regular_weight_biases'] = 0.01                     # Regularization parameter for weights
@@ -533,8 +545,8 @@ if __name__ == "__main__":
     # R['activate_func'] = 'selu'
     # R['activate_func'] = 'phi'
 
-    R['bnn2beta'] = 'explicitly_related'  # bNN 和参数 beta 显式相关，即参数 beta 作为bNN的一个输入
-    # R['bnn2beta'] = 'implicitly_related'    # bNN 和参数 beta 隐式相关，即参数 beta 不作为bNN的一个输入
+    # R['bnn2beta'] = 'explicitly_related'  # bNN 和参数 beta 显式相关，即参数 beta 作为bNN的一个输入
+    R['bnn2beta'] = 'implicitly_related'    # bNN 和参数 beta 隐式相关，即参数 beta 不作为bNN的一个输入
     # bNN是一个整体的网络表示，还是分为几个独立的网格表示 b 的每一个分量 bi. b=(b0,b1,b2,......)
     R['sub_networks'] = 'subDNNs'
     # R['sub_networks'] = 'oneDNN'
